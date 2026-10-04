@@ -1,3 +1,0 @@
-# JOSH BANTU DONK
-# NEIL BLM KERJA NIHH
-# Iya nihh
