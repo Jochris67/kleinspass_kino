@@ -187,6 +187,7 @@ class Kino:
             print("\nMenu Utama:")
             print("1. Membeli ticket?")
             print("2. Laporan bangku terpesan, berhadiah dan kosong?")
+            print("4. Lihat informasi inheritance class")
             print("3. Exit")
 
             pilihan = input("Pilih menu: ").strip()
@@ -206,6 +207,13 @@ class Kino:
                     "\n2. Laporan bangku terpesan, berhadiah dan kosong?"
                 )
                 self.laporan()
+                
+            elif pilihan == "4":
+                print(Tiket.__mro__)
+                print(Kino.__mro__)
+                print(KursiHadiah.__mro__)
+                print(Kursi.__mro__)
+                print(BisaDicetak.__mro__)
 
             elif pilihan == "3":
                 break
