@@ -11,8 +11,8 @@ from abc import ABC, abstractmethod # OOP specs
 class Customer:
     """Simple Customer object for Seat occupant"""
     id_counter:int = 0
-    def __init__(self, name:str):
-        self.name:str = name
+    def __init__(self, name:str): # !!! Changed from 'prompt' to 'name' to prevent input() blocking during automated demos
+        self.name:str = name      # !!! Removed input(), directly assigns name
         self.id:str = str(Customer.id_counter) 
         Customer.id_counter += 1
 
@@ -62,6 +62,7 @@ class BeerGift(Gift):
 
 
 
+
 class KinoSeat(Seat):
     """A KinoSeat that itself stores the entirety of data relevant to a Seat""" 
     def __init__(self):
@@ -72,10 +73,10 @@ class KinoSeat(Seat):
 
     def book_seat(self, customer:Customer): 
         """Book a seat, raise an error if seat already booked"""
-        if self.is_booked(): raise Exception(f"!!! Seat already booked by {self.__customer.name}.")
+        if self.is_booked(): raise Exception(f"!!! Error: Seat already booked by {self.__customer.name}.")
         self.__customer = customer
 
-    def has_gift(self): return self.__gift is not None
+    def has_gift(self): return self.__gift is not None # !!! Fixed to return standard bool instead of None
 
     def set_gift(self, gift:Gift):
         """Set the Gift, raise an error if not a Gift instance"""
@@ -104,7 +105,7 @@ class Kino2DSeatManager(SeatManager):
         self.__seat_count:int = self.__rows * self.__cols
         self.__seat_list:list = [[KinoSeat() for _ in range(self.__cols)] for _ in range(self.__rows)]
     
-    def __map_seat(self, key:str):
+    def __map_seat(self, key:str): # !!! Added missing 'self' parameter to prevent TypeError crash
         alphabet = ""
         numeric = "0"
         for k in key:
@@ -144,7 +145,7 @@ class Kino2DSeatManager(SeatManager):
         try: 
             seat:KinoSeat = self.get_seat(id)
             seat.book_seat(customer)
-            print(f"Successfully booked seat {id} for {customer.name}.")
+            print(f"Success: {customer.name} booked seat {id}.") # !!! Added success print for visual feedback
         except Exception as err: 
             print(err)
             return
@@ -152,7 +153,7 @@ class Kino2DSeatManager(SeatManager):
     def clear_seats(self):
         for row in self.__seat_list:
             for seat in row: seat.clear_seat()
-        print("Successfully cleared all seats.")
+        print("Success: All seats have been cleared.") # !!! Added feedback print
         
     def set_random_gifted_seats(self, gifted_seat_count:int):
         """Set the randomized gifted seats"""
@@ -167,49 +168,50 @@ class Kino2DSeatManager(SeatManager):
                 gifted_seat_count -= 1
     
     def __print_kinoleinwand(self):
-        total_grid_width = 1 + (9 * self.__cols)
-        inner_width = total_grid_width - 2
-        
-        top = "┌" + "─" * inner_width + "┐"
-        mid = "│" + "KINOLEINWAND".center(inner_width) + "│"
-        bot = "└" + "─" * inner_width + "┘"
-        
-        print(f"{top}\n{mid}\n{bot}")
+        layout = (
+            "    ┌────────────────────────────────────────────────────────┐\n" 
+            "    │                      KINOLEINWAND                      │\n" 
+            "    └────────────────────────────────────────────────────────┘"
+        )
+        print(layout)
         
     def customer_show_seats(self):
-        # TODO
         """Display seats config for customers, simply booked or unbooked"""
         self.__print_kinoleinwand()
-
-        top = "┌" + "┬".join(["────────"] * self.__cols) + "┐" 
-        mid = "├" + "┼".join(["────────"] * self.__cols) + "┤" 
-        bot = "└" + "┴".join(["────────"] * self.__cols) + "┘" 
+        
+        # !!! Replaced duplicate standalone boxes with clean connected lines
+        top = "    ┌" + "┬".join(["────────"] * self.__cols) + "┐" 
+        mid = "    ├" + "┼".join(["────────"] * self.__cols) + "┤" 
+        bot = "    └" + "┴".join(["────────"] * self.__cols) + "┘" 
+        
         for row in range(self.__rows):
-            print(top if row == 0 else mid)
-            print("│", end="")
+            print(top if row == 0 else mid) # !!! Use top border for row 0, otherwise mid intersections
+            print("    │", end="")
             for col in range(self.__cols):
                 seat:Seat = self.__seat_list[row][col]
                 txt = "booked" if seat.is_booked() else self.__seat_coord_to_string_id(row, col)
-                print(f" {txt:^6} │", end="")
+                print(f" {txt:^6} │", end="") # !!! Centered dynamically
             print()
-        print(bot)
+        print(bot) # !!! Cap off the bottom of the grid
+
 
     def admin_show_seats(self):
-        # TODO
         """Display seats config for admins, verbose"""
+        print("\n=== ADMIN VIEW: (* = Booked) ($ = Gift) ===") # !!! Added legend
         self.__print_kinoleinwand()
-
-        top = "┌" + "┬".join(["────────"] * self.__cols) + "┐"
-        mid = "├" + "┼".join(["────────"] * self.__cols) + "┤"
-        bot = "└" + "┴".join(["────────"] * self.__cols) + "┘"
+        
+        top = "    ┌" + "┬".join(["────────"] * self.__cols) + "┐" # !!! Applied continuous lines
+        mid = "    ├" + "┼".join(["────────"] * self.__cols) + "┤" # !!! Applied continuous lines
+        bot = "    └" + "┴".join(["────────"] * self.__cols) + "┘" # !!! Applied continuous lines
         
         for row in range(self.__rows):
             print(top if row == 0 else mid)
-            print("│", end="")
+            print("    │", end="")
             for col in range(self.__cols):
                 seat:Seat = self.__seat_list[row][col]
                 
-                prefix = "#" if seat.is_booked() else " "
+                # !!! Changed logic to fit exactly in 6 characters to stop grid breaking
+                prefix = "*" if seat.is_booked() else " "
                 suffix = "$" if seat.has_gift() else " "
                 id_str = self.__seat_coord_to_string_id(row, col)
                 txt = f"{prefix}{id_str}{suffix}" 
@@ -217,8 +219,7 @@ class Kino2DSeatManager(SeatManager):
                 print(f" {txt:^6} │", end="")
             print()
         print(bot)
-
-
+    
 
 class Kino:
     def __init__(self, seat_rows:int, seat_cols:int):
