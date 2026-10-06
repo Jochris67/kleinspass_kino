@@ -1,237 +1,284 @@
-import sys
-import random
-from abc import ABC, abstractmethod
+# SET DEFAULT GIFT SEATS
+G_GIFTED_SEAT_COUNT = 5 # temporarily set to 5
+# SET SEAT DIMENSIONS
+G_SEAT_ROWS = 4
+G_SEAT_COLS = 6
 
+import sys # For command line argument sys.argv
+from random import randint # For random gift seat assignment
+from abc import ABC, abstractmethod # OOP specs
 
-# Interface
-class BisaDicetak(ABC):
+class Customer:
+    """Simple Customer object for Seat occupant"""
+    id_counter:int = 0
+    def __init__(self, name:str):
+        self.name:str = name
+        self.id:str = str(Customer.id_counter) 
+        Customer.id_counter += 1
+
+class Gift:
+    """Interface for Gift implementations"""
     @abstractmethod
-    def cetak(self):
-        pass
+    def __str__(self)->str: pass
 
-# Encapsulation
-class Kursi:
-    def __init__(self, nomor):
-        self.__nomor = nomor
-        self.__terpesan = False
+class Seat(ABC):
+    """Interface for Seat implementations"""
+    @abstractmethod # return booked status
+    def is_booked(self)->bool: pass
+    @abstractmethod # action book a seat
+    def book_seat(self)->None: pass
+    @abstractmethod # return if Seat has a Gift
+    def has_gift(self)->bool: pass
+    @abstractmethod # set the Seat's Gift
+    def set_gift(self, gift:Gift)->None: pass
+    @abstractmethod # return the Seat's Gift
+    def take_gift(self)->Gift: pass
+    @abstractmethod # reset Seat
+    def clear_seat(self)->None: pass
 
-    def get_nomor(self):
-        return self.__nomor
+class SeatManager(ABC):
+    """Interface for SeatManagers needed by Kino clasess"""
+    @abstractmethod # return seat objects from seat array
+    def get_seat(self, id:str)->Seat: pass
+    @abstractmethod # handle booking a seat, get then book
+    def book_seat(self, id:str, customer:Customer)->None: pass
+    @abstractmethod # reset all seats
+    def clear_seats(self)->None: pass
+    @abstractmethod # display booked unbooked for customers
+    def customer_show_seats(self)->None: pass
+    @abstractmethod # display verbose seat data for admins
+    def admin_show_seats(self)->None: pass
+    @abstractmethod # set the gifts can be used repeatedly
+    def set_random_gifted_seats(self, gifted_seat_count:int)->None: pass
 
-    def is_terpesan(self):
-        return self.__terpesan
+# SET WHAT THE GIFT IS
+class PopcornGift(Gift):
+    def __str__(self):
+        return "FREE POPCORN 🍿"
 
-    def pesan(self):
-        if self.__terpesan:
-            raise ValueError(f"Kursi {self.__nomor} sudah terbooking")
-        self.__terpesan = True
-
-    def is_berhadiah(self):
-        return False
-
-
-# Inheritance
-class KursiHadiah(Kursi):
-    def is_berhadiah(self):
-        return True
-
-
-# Tiket mengimplementasikan interface BisaDicetak.
-# Relasi has-a: Tiket memiliki kumpulan Kursi.
-class Tiket(BisaDicetak):
-    def __init__(self, kursi):
-        self.__kursi = tuple(kursi)
-
-    def cetak(self):
-        nomor = ", ".join(k.get_nomor() for k in self.__kursi)
-
-        print("  Tiket tercetak anda anda :")
-        print()
-        print("  " + "#" * 39)
-        self.__baris("Kino KleinSpass")
-        self.__baris(f"Nomer bangku : {nomor}")
-        self.__baris("")
-
-        for kursi in self.__kursi:
-            if kursi.is_berhadiah():
-                self.__baris("Anda beruntung,")
-                self.__baris(
-                    f"{kursi.get_nomor()} silahkan cek bawah kursi anda"
-                )
-
-        print("  " + "#" * 39)
-
-    def __baris(self, teks):
-        print(f"  ## {teks:<33} ##")
+class BeerGift(Gift):
+    def __str__(self):
+        return "FREE BEER 🍺"
 
 
-# Relasi has-a: Kino memiliki 24 Kursi.
-class Kino:
+
+class KinoSeat(Seat):
+    """A KinoSeat that itself stores the entirety of data relevant to a Seat""" 
     def __init__(self):
-        self.__kursi = {}
+        self.__customer:Customer = None
+        self.__gift = None
 
-    def __siapkan_kursi(self, gifts_number):
-        if type(gifts_number) is not int or not 0 <= gifts_number <= 24:
-            raise ValueError(
-                "Jumlah hadiah harus bilangan bulat dari 0 sampai 24."
-            )
+    def is_booked(self): return self.__customer is not None
 
-        nomor_kursi = [
-            baris + str(i)
-            for baris in "ABCD"
-            for i in range(1, 7)
-        ]
+    def book_seat(self, customer:Customer): 
+        """Book a seat, raise an error if seat already booked"""
+        if self.is_booked(): raise Exception(f"!!! Seat already booked by {self.__customer.name}.")
+        self.__customer = customer
 
-        hadiah = set(random.sample(nomor_kursi, gifts_number))
-        self.__kursi = {}
+    def has_gift(self): return self.__gift is not None
 
-        for nomor in nomor_kursi:
-            if nomor in hadiah:
-                self.__kursi[nomor] = KursiHadiah(nomor)
-            else:
-                self.__kursi[nomor] = Kursi(nomor)
+    def set_gift(self, gift:Gift):
+        """Set the Gift, raise an error if not a Gift instance"""
+        if not isinstance(gift, Gift): raise Exception("!!! Not a Gift object.")
+        self.__gift = gift
+        
+    def take_gift(self):
+        """Return whatever is in this KinoSeat's gift and dis-own the gift object"""
+        if not self.has_gift(): return None
+        temp = self.__gift # Note python variables store the Gift object as mutable references
+        self.__gift = None # KinoSeat object intentionally loses the reference to the Gift Object
+        return temp # Gift reference stored in temp is returned, Gift ownership passed outside
 
-    def __tampilkan_denah(self, tampilkan_hadiah=False):
-        print("\n" + "X" * 30)
-        print("X" + " " * 28 + "X")
-        print("X" + "Kinoleinwand".center(28) + "X")
-        print("X" + " " * 28 + "X")
-        print("X" * 30)
+    def clear_seat(self):
+        """Reset KinoSeat"""
+        self.__customer = None
+        self.__gift = None
 
-        for baris in "ABCD":
-            atas = []
-            tengah = []
 
-            for i in range(1, 7):
-                kursi = self.__kursi[baris + str(i)]
 
-                simbol = "XXXX"
-                if tampilkan_hadiah and kursi.is_berhadiah():
-                    simbol = "GIFT"
+class Kino2DSeatManager(SeatManager):
+    """Manage Seats for Kino classes with 2D lists for storage"""
+    def __init__(self, rows_:int, cols_:int):
+        self.__rows:int = rows_
+        self.__cols:int = cols_ 
+        self.__seat_count:int = self.__rows * self.__cols
+        self.__seat_list:list = [[KinoSeat() for _ in range(self.__cols)] for _ in range(self.__rows)]
+    
+    def __map_seat(self, key:str):
+        alphabet = ""
+        numeric = "0"
+        for k in key:
+            if k.isalpha(): alphabet += k.upper()
+            elif k.isdigit(): numeric += k
+        
+        row = 0
+        # A is 0, Z is 25, AA is 26 ...
+        # A < Z < AA < AZ < BA < BZ ...
+        for a in alphabet:
+            row = (row*26) + (ord(a) - ord("A") + 1)
+        row -= 1 # make it 0 indexed
+        col = int(numeric) - 1
+        return row, col
 
-                atas.append(simbol)
+    def __seat_coord_to_string_id(self, row:int, col:int):
+        num = row + 1 # temporary offset to prevent num -= 1 going out of idx
+        alphabet = ""
+        # 0 is A, 25 is Z, 26 is AA ...
+        # A < Z < AA < AZ < BA < BZ ...
+        while num > 0:
+            num -= 1 # there is no "0" character, just A to Z 26 characters
+            alphabet = chr(num % 26 + ord("A")) + alphabet
+            num //= 26
+        return alphabet + str(col + 1)
+        
+    def get_seat(self, id:str):
+        """Return the reference to a Seat object, what is returned is mutable so be careful"""
+        row, col = self.__map_seat(id)
+        if not (0 <= row < self.__rows and 0 <= col < self.__cols):
+            raise Exception(f"!!! Seat {id} doesn't exist.")
+        return self.__seat_list[row][col]
 
-                if kursi.is_terpesan():
-                    tengah.append("XXXX")
-                else:
-                    tengah.append(f"X{kursi.get_nomor()}X")
+    def book_seat(self, id:str, customer:Customer):
+        """Handle booking a seat and exception handling as well"""
+        seat = None
+        try: 
+            seat:KinoSeat = self.get_seat(id)
+            seat.book_seat(customer)
+            print(f"Successfully booked seat {id} for {customer.name}.")
+        except Exception as err: 
+            print(err)
+            return
 
+    def clear_seats(self):
+        for row in self.__seat_list:
+            for seat in row: seat.clear_seat()
+        print("Successfully cleared all seats.")
+        
+    def set_random_gifted_seats(self, gifted_seat_count:int):
+        """Set the randomized gifted seats"""
+        gifted_seat_count = min(gifted_seat_count, self.__seat_count)
+        while gifted_seat_count > 0:
+            row = randint(0, self.__rows - 1)
+            col = randint(0, self.__cols - 1)
+            seat:KinoSeat = self.__seat_list[row][col]
+            if not seat.has_gift():
+                gift = PopcornGift() if (row + col) % 2 == 0 else BeerGift()
+                seat.set_gift(gift)
+                gifted_seat_count -= 1
+    
+    def __print_kinoleinwand(self):
+        total_grid_width = 1 + (9 * self.__cols)
+        inner_width = total_grid_width - 2
+        
+        top = "┌" + "─" * inner_width + "┐"
+        mid = "│" + "KINOLEINWAND".center(inner_width) + "│"
+        bot = "└" + "─" * inner_width + "┘"
+        
+        print(f"{top}\n{mid}\n{bot}")
+        
+    def customer_show_seats(self):
+        """Display seats config for customers, simply booked or unbooked"""
+        self.__print_kinoleinwand()
+
+        top = "┌" + "┬".join(["────────"] * self.__cols) + "┐" 
+        mid = "├" + "┼".join(["────────"] * self.__cols) + "┤" 
+        bot = "└" + "┴".join(["────────"] * self.__cols) + "┘" 
+        for row in range(self.__rows):
+            print(top if row == 0 else mid)
+            print("│", end="")
+            for col in range(self.__cols):
+                seat:Seat = self.__seat_list[row][col]
+                txt = "booked" if seat.is_booked() else self.__seat_coord_to_string_id(row, col)
+                print(f" {txt:^6} │", end="")
             print()
-            print(" ".join(atas))
-            print(" ".join(tengah))
-            print(" ".join(atas))
+        print(bot)
 
-    def beli_tiket(self, masukan):
-        nomor_kursi = [
-            nomor.strip().upper()
-            for nomor in masukan.split(",")
-        ]
+    def admin_show_seats(self):
+        """Display seats config for admins, verbose"""
+        self.__print_kinoleinwand()
 
-        if any(not nomor for nomor in nomor_kursi):
-            raise ValueError(
-                "Masukkan nomor kursi, misalnya A3, A4, A5."
-            )
+        top = "┌" + "┬".join(["────────"] * self.__cols) + "┐"
+        mid = "├" + "┼".join(["────────"] * self.__cols) + "┤"
+        bot = "└" + "┴".join(["────────"] * self.__cols) + "┘"
+        
+        for row in range(self.__rows):
+            print(top if row == 0 else mid)
+            print("│", end="")
+            for col in range(self.__cols):
+                seat:Seat = self.__seat_list[row][col]
+                
+                prefix = "# " if seat.is_booked() else ""
+                suffix = " $" if seat.has_gift() else ""
+                id_str = self.__seat_coord_to_string_id(row, col)
+                txt = f"{prefix}{id_str}{suffix}" 
+                
+                print(f" {txt:^6} │", end="")
+            print()
+        print(bot)
 
-        if len(nomor_kursi) != len(set(nomor_kursi)):
-            raise ValueError("Nomor kursi tidak boleh berulang.")
 
-        # Periksa semua kursi sebelum melakukan pemesanan.
-        for nomor in nomor_kursi:
-            if nomor not in self.__kursi:
-                raise ValueError(
-                    f"Kursi {nomor} tidak tersedia. Pilih A1 sampai D6."
-                )
 
-            if self.__kursi[nomor].is_terpesan():
-                raise ValueError(f"Kursi {nomor} sudah terbooking")
+class Kino:
+    def __init__(self, seat_rows:int, seat_cols:int):
+        self.seat_manager = Kino2DSeatManager(seat_rows, seat_cols)
 
-        kursi_dipilih = [
-            self.__kursi[nomor]
-            for nomor in nomor_kursi
-        ]
+    def start(self, gifted_seat_count:int):
+        # !!! Replaced previous start method entirely with a multi-step feature demo
+        print("\n" + "="*45)
+        print("🎬 KINO SYSTEM INITIALIZATION")
+        print("="*45)
+        self.seat_manager.set_random_gifted_seats(gifted_seat_count)
+        self.seat_manager.admin_show_seats()
 
-        for kursi in kursi_dipilih:
-            kursi.pesan()
-
-        return Tiket(kursi_dipilih)
-
-    def laporan(self):
-        self.__tampilkan_denah(tampilkan_hadiah=True)
-
-        semua = list(self.__kursi.values())
-
-        terpesan = sum(
-            kursi.is_terpesan()
-            for kursi in semua
-        )
-
-        total_hadiah = sum(
-            kursi.is_berhadiah()
-            for kursi in semua
-        )
-
-        hadiah_diberikan = sum(
-            kursi.is_berhadiah() and kursi.is_terpesan()
-            for kursi in semua
-        )
-
-        print(f"\nBooked/Available: {terpesan}/{len(semua)}")
-        print(f"Total/Delivered Gift: {total_hadiah}/{hadiah_diberikan}")
-
-    def starts(self, gifts_number):
-        self.__siapkan_kursi(gifts_number)
-        self.__tampilkan_denah()
-
-        while True:
-            print("\nMenu Utama:")
-            print("1. Membeli ticket?")
-            print("2. Laporan bangku terpesan, berhadiah dan kosong?")
-            print("4. Lihat informasi inheritance class")
-            print("3. Exit")
-
-            pilihan = input("Pilih menu: ").strip()
-
-            if pilihan == "1":
-                print("\n1. Membeli ticket?\n")
-                masukan = input("  Masukkan nomer kursi: ")
-
-                try:
-                    tiket = self.beli_tiket(masukan)
-                    tiket.cetak()
-                except ValueError as error:
-                    print("  " + str(error))
-
-            elif pilihan == "2":
-                print(
-                    "\n2. Laporan bangku terpesan, berhadiah dan kosong?"
-                )
-                self.laporan()
-
-            elif pilihan == "3":
-                break
-
+        print("\n" + "="*45)
+        print("🎟️  DEMO: CUSTOMER BOOKING")
+        print("="*45)
+        alice = Customer("Alice") 
+        bob = Customer("Bob")     
+        
+        self.seat_manager.book_seat("A1", alice) 
+        self.seat_manager.book_seat("B3", bob)   
+        
+        # Intentional error demo
+        print("\nAttempting double-booking on A1...")
+        self.seat_manager.book_seat("A1", bob)   
+        
+        print("\n--- Customer Display ---")
+        self.seat_manager.customer_show_seats()  
+        
+        print("\n" + "="*45)
+        print("🎁 DEMO: CLAIMING GIFTS")
+        print("="*45)
+        for seat_id in ["A1", "A2"]: # Checking a known booked seat and a random one
+            print(f"Checking {seat_id} for gifts...")
+            seat = self.seat_manager.get_seat(seat_id) 
+            if seat.has_gift():                     
+                gift = seat.take_gift()             
+                print(f"  -> Gift found and claimed at {seat_id}: {gift}") 
             else:
-                print("Pilih menu 1, 2, atau 3.")
+                print(f"  -> No gift at {seat_id}.") 
+                
+        print("\n--- Admin Display (Notice claimed gifts are gone) ---")
+        self.seat_manager.admin_show_seats() 
 
-    # Mendukung nama start() maupun starts() sesuai soal.
-    def start(self, gifts_number):
-        self.starts(gifts_number)
+        print("\n" + "="*45)
+        print("🧹 DEMO: CLEARING SEATS FOR NEXT SHOW")
+        print("="*45)
+        self.seat_manager.clear_seats()          
+        self.seat_manager.customer_show_seats()  
 
 
-# Main program
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Cara menjalankan: python kleine_spass_kino.py 3")
-        sys.exit(1)
+    kino = Kino(G_SEAT_ROWS, G_SEAT_COLS)
+    # COMMAND LINE ARGUMENTS ex: "... kleinspass_kino.py <int>"
+    # whatever is in ... this program only gets the arguments :
+    # "kleinspass_kino.py" at idx 0 of sys.argv list
+    # <int> at idx 1 of sys.argv list
+    # try get and convert argument string at sys.argv[1] to integer
+    try: G_GIFTED_SEAT_COUNT = int(sys.argv[1])
+    # ignore IndexError when sys.argv[1] doesn't exist ex: "... kleinspass_kino.py"
+    # ignore ValueError when sys.argv[1] is not convertible to int
+    except Exception: pass
 
-    try:
-        jumlah_hadiah = int(sys.argv[1])
-        kino = Kino()
-        kino.starts(jumlah_hadiah)
-
-    except ValueError as error:
-        print(error)
-        sys.exit(1)
-
-    except (EOFError, KeyboardInterrupt):
-        print("\nProgram ditutup.")
+    # majority of program runtime is in the start method ... 
+    kino.start(G_GIFTED_SEAT_COUNT)
