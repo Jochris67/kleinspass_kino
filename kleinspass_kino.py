@@ -68,6 +68,9 @@ class KinoSeat(Seat):
         self.__customer:Customer = None
         self.__gift = None
 
+    def get_customer(self):
+        return self.__customer
+    
     def is_booked(self): return True if self.__customer is not None else False
 
     def book_seat(self, customer:Customer): 
@@ -87,7 +90,7 @@ class KinoSeat(Seat):
         if not self.has_gift(): return None
         temp = self.__gift # Note python variables store the Gift object as mutable references
         self.__gift = None # KinoSeat object intentionally loses the reference to the Gift Object
-        return temp # Gift reference stored in temp is returned, Gift ownership passed outside
+        return temp # Gift reference stored in temp is returned, Gift ownership passed Finishside
 
     def clear_seat(self):
         """Reset KinoSeat"""
@@ -121,7 +124,7 @@ class Kino2DSeatManager(SeatManager):
         return row, col
 
     def __seat_coord_to_string_id(self, row:int, col:int):
-        num = row + 1 # temporary offset to prevent num -= 1 going out of idx
+        num = row + 1 # temporary offset to prevent num -= 1 going Finish of idx
         alphabet = ""
         # 0 is A, 25 is Z, 26 is AA ...
         # A < Z < AA < AZ < BA < BZ ...
@@ -167,14 +170,11 @@ class Kino2DSeatManager(SeatManager):
                 gifted_seat_count -= 1
     
     def __print_kinoleinwand(self):
-        total_grid_width = 1 + (9 * self.__cols)
-        inner_width = total_grid_width - 2
-        
-        top = "┌" + "─" * inner_width + "┐"
-        mid = "│" + "KINOLEINWAND".center(inner_width) + "│"
-        bot = "└" + "─" * inner_width + "┘"
-        
-        print(f"{top}\n{mid}\n{bot}")
+        print("\n" + "X" * 30)
+        print("X" + " " * 28 + "X")
+        print("X" + "Kinoleinwand".center(28) + "X")
+        print("X" + " " * 28 + "X")
+        print("X" * 30)
         
     def customer_show_seats(self):
         # TODO
@@ -188,8 +188,8 @@ class Kino2DSeatManager(SeatManager):
             print(top if row == 0 else mid)
             print("│", end="")
             for col in range(self.__cols):
-                seat:Seat = self.__seat_list[row][col]
-                txt = "booked" if seat.is_booked() else self.__seat_coord_to_string_id(row, col)
+                seat:Seat = self.__seat_list[row][col] 
+                txt = "XXXX" if seat.is_booked() else "XX" + self.__seat_coord_to_string_id(row, col)
                 print(f" {txt:^6} │", end="")
             print()
         print(bot)
@@ -221,53 +221,76 @@ class Kino2DSeatManager(SeatManager):
 
 
 class Kino:
-    def __init__(self, seat_rows:int, seat_cols:int):
-        self.seat_manager = Kino2DSeatManager(seat_rows, seat_cols)
+    def __init__(self, seat_rows: int, seat_cols: int):
+        self.seat_manager = Kino2DSeatManager(
+            seat_rows, seat_cols
+        )
 
-    def start(self, gifted_seat_count:int):
-        # !!! Replaced previous start method entirely with a multi-step feature demo
-        print("\n" + "="*45)
-        print("🎬 KINO SYSTEM INITIALIZATION")
-        print("="*45)
-        self.seat_manager.set_random_gifted_seats(gifted_seat_count)
-        self.seat_manager.admin_show_seats()
+    def start(self, gifted_seat_count: int):
+        self.seat_manager.set_random_gifted_seats(
+            gifted_seat_count
+        )
 
-        print("\n" + "="*45)
-        print("🎟️  DEMO: CUSTOMER BOOKING")
-        print("="*45)
-        alice = Customer("Alice") 
-        bob = Customer("Bob")     
-        
-        self.seat_manager.book_seat("A1", alice) 
-        self.seat_manager.book_seat("B3", bob)   
-        
-        # Intentional error demo
-        print("\nAttempting double-booking on A1...")
-        self.seat_manager.book_seat("A1", bob)   
-        
-        print("\n--- Customer Display ---")
-        self.seat_manager.customer_show_seats()  
-        
-        print("\n" + "="*45)
-        print("🎁 DEMO: CLAIMING GIFTS")
-        print("="*45)
-        for seat_id in ["A1", "A2"]: # Checking a known booked seat and a random one
-            print(f"Checking {seat_id} for gifts...")
-            seat = self.seat_manager.get_seat(seat_id) 
-            if seat.has_gift():                     
-                gift = seat.take_gift()             
-                print(f"  -> Gift found and claimed at {seat_id}: {gift}") 
+        self.seat_manager.customer_show_seats()
+
+        while True:
+            print("\nMain Menu:")
+            print("1. Buy Ticket")
+            print("2. Admin View")
+            print("3. Exit")
+
+            pilihan = input("Choose menu: ").strip()
+
+            if pilihan == "1":
+                nama = input("Name: ").strip()
+                nomor = input(
+                    "Choose your seat (example A1): "
+                ).strip().upper()
+
+                try:
+                    seat = self.seat_manager.get_seat(nomor)
+                    customer = Customer(nama)
+
+                    seat.book_seat(customer)
+
+                    tiket = Tiket(nomor, seat)
+                    tiket.cetak()
+
+                except Exception as error:
+                    print(error)
+
+            elif pilihan == "2":
+                self.seat_manager.admin_show_seats()
+
+            elif pilihan == "3":
+                print("Thank you.")
+                break
+
             else:
-                print(f"  -> No gift at {seat_id}.") 
-                
-        print("\n--- Admin Display (Notice claimed gifts are gone) ---")
-        self.seat_manager.admin_show_seats() 
+                print("Choose from 1 to 3.") 
+        
+class Tiket():
+    def __init__(self, number, seat:Seat):
+        self.__number = number
+        self.__seat = seat
+        
+    def get_number(self):
+        return self.__number
 
-        print("\n" + "="*45)
-        print("🧹 DEMO: CLEARING SEATS FOR NEXT SHOW")
-        print("="*45)
-        self.seat_manager.clear_seats()          
-        self.seat_manager.customer_show_seats()  
+    def cetak(self):
+        print("\nTICKET:")
+        
+        customer = self.__seat.get_customer()
+
+        print("KinoKleinSpass")
+        print(f"Seat number: {self.get_number()}")
+        print(f"Name: {customer.name}")
+
+        if self.__seat.has_gift():
+            print("You so lucky!")
+            print(
+                f"{self.get_number()}: Go to counter for receive the gift"
+            )
 
 
 if __name__ == "__main__":

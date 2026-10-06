@@ -9,7 +9,6 @@ class BisaDicetak(ABC):
     def cetak(self):
         pass
 
-
 # Encapsulation
 class Kursi:
     def __init__(self, nomor):
@@ -207,13 +206,6 @@ class Kino:
                     "\n2. Laporan bangku terpesan, berhadiah dan kosong?"
                 )
                 self.laporan()
-                
-            elif pilihan == "4":
-                print(Tiket.__mro__)
-                print(Kino.__mro__)
-                print(KursiHadiah.__mro__)
-                print(Kursi.__mro__)
-                print(BisaDicetak.__mro__)
 
             elif pilihan == "3":
                 break
@@ -234,7 +226,6 @@ if __name__ == "__main__":
 
     try:
         jumlah_hadiah = int(sys.argv[1])
-
         kino = Kino()
         kino.starts(jumlah_hadiah)
 
