@@ -1,8 +1,8 @@
 # SET DEFAULT GIFT SEATS
-G_GIFTED_SEAT_COUNT = 5 # temporarily set to 5
+G_GIFTED_SEAT_COUNT = 0 # temporarily set to 5
 # SET SEAT DIMENSIONS
-G_SEAT_ROWS = 4
-G_SEAT_COLS = 6
+G_SEAT_ROWS = 2
+G_SEAT_COLS = 2
 
 import sys # For command line argument sys.argv
 from random import randint # For random gift seat assignment
@@ -68,7 +68,7 @@ class KinoSeat(Seat):
         self.__customer:Customer = None
         self.__gift = None
 
-    def is_booked(self): return True if self.__customer is not None else False
+    def is_booked(self): return self.__customer is not None
 
     def book_seat(self, customer:Customer): 
         """Book a seat, raise an error if seat already booked"""
@@ -177,7 +177,6 @@ class Kino2DSeatManager(SeatManager):
         print(f"{top}\n{mid}\n{bot}")
         
     def customer_show_seats(self):
-        # TODO
         """Display seats config for customers, simply booked or unbooked"""
         self.__print_kinoleinwand()
 
@@ -195,7 +194,6 @@ class Kino2DSeatManager(SeatManager):
         print(bot)
 
     def admin_show_seats(self):
-        # TODO
         """Display seats config for admins, verbose"""
         self.__print_kinoleinwand()
 
@@ -209,8 +207,8 @@ class Kino2DSeatManager(SeatManager):
             for col in range(self.__cols):
                 seat:Seat = self.__seat_list[row][col]
                 
-                prefix = "#" if seat.is_booked() else " "
-                suffix = "$" if seat.has_gift() else " "
+                prefix = "# " if seat.is_booked() else ""
+                suffix = " $" if seat.has_gift() else ""
                 id_str = self.__seat_coord_to_string_id(row, col)
                 txt = f"{prefix}{id_str}{suffix}" 
                 
