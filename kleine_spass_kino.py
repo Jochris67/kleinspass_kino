@@ -32,7 +32,7 @@ class Seat(ABC):
     @abstractmethod # set the Seat's Gift
     def set_gift(self, gift:Gift)->None: pass
     @abstractmethod # return the Seat's Gift
-    def take_gift(self)->Gift: pass
+    def claim_gift(self)->Gift: pass
     @abstractmethod # reset Seat
     def clear_seat(self)->None: pass
 
@@ -68,6 +68,8 @@ class KinoSeat(Seat):
         self.__customer:Customer = None
         self.__gift = None
 
+    def get_customer(self): return self.__customer
+
     def is_booked(self): return self.__customer is not None
 
     def book_seat(self, customer:Customer): 
@@ -82,7 +84,7 @@ class KinoSeat(Seat):
         if not isinstance(gift, Gift): raise Exception("!!! Not a Gift object.")
         self.__gift = gift
         
-    def take_gift(self):
+    def claim_gift(self):
         """Return whatever is in this KinoSeat's gift and dis-own the gift object"""
         if not self.has_gift(): return None
         temp = self.__gift # Note python variables store the Gift object as mutable references
@@ -103,7 +105,6 @@ class Kino2DSeatManager(SeatManager):
         self.__cols:int = cols_ 
         self.__seat_count:int = self.__rows * self.__cols
         self.__seat_list:list = [[KinoSeat() for _ in range(self.__cols)] for _ in range(self.__rows)]
-    
     def __map_seat(self, key:str):
         alphabet = ""
         numeric = "0"
@@ -200,21 +201,35 @@ class Kino2DSeatManager(SeatManager):
         top = "┌" + "┬".join(["────────"] * self.__cols) + "┐"
         mid = "├" + "┼".join(["────────"] * self.__cols) + "┤"
         bot = "└" + "┴".join(["────────"] * self.__cols) + "┘"
-        
+        booked_seats = 0
+        gifted_seats = 0
         for row in range(self.__rows):
             print(top if row == 0 else mid)
             print("│", end="")
             for col in range(self.__cols):
                 seat:Seat = self.__seat_list[row][col]
-                
-                prefix = "# " if seat.is_booked() else ""
-                suffix = " $" if seat.has_gift() else ""
-                id_str = self.__seat_coord_to_string_id(row, col)
-                txt = f"{prefix}{id_str}{suffix}" 
-                
-                print(f" {txt:^6} │", end="")
+                booked_string = ""
+                if seat.is_booked():
+                    booked_seats += 1
+                    booked_string = "booked"
+                print(f" {booked_string:^6} │", end="")
+            print()
+            print("│", end="")
+            for col in range(self.__cols):
+                print(f" {self.__seat_coord_to_string_id(row, col):^6} │", end="")
+            print()
+            print("│", end="")
+            for col in range(self.__cols):
+                seat:Seat = self.__seat_list[row][col]
+                gifted_string = ""
+                if seat.has_gift():
+                    gifted_seats += 1
+                    gifted_string = "=GIFT="
+                print(f" {gifted_string:^6} │", end="")
             print()
         print(bot)
+        print(f"Booked/Available : {booked_seats}/{self.__seat_count}")
+        print(f"Unclaimed Gifts  : {gifted_seats}")
 
 
 
@@ -223,6 +238,7 @@ class Kino:
         self.seat_manager = Kino2DSeatManager(seat_rows, seat_cols)
 
     def start(self, gifted_seat_count:int):
+        # TODO
         # !!! Replaced previous start method entirely with a multi-step feature demo
         print("\n" + "="*45)
         print("🎬 KINO SYSTEM INITIALIZATION")
@@ -253,7 +269,7 @@ class Kino:
             print(f"Checking {seat_id} for gifts...")
             seat = self.seat_manager.get_seat(seat_id) 
             if seat.has_gift():                     
-                gift = seat.take_gift()             
+                gift = seat.claim_gift()             
                 print(f"  -> Gift found and claimed at {seat_id}: {gift}") 
             else:
                 print(f"  -> No gift at {seat_id}.") 
