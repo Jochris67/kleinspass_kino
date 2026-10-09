@@ -1,8 +1,8 @@
 # SET DEFAULT GIFT SEATS
-G_GIFTED_SEAT_COUNT = 5 # temporarily set to 5
+G_GIFTED_SEAT_COUNT = 0 # temporarily set to 5
 # SET SEAT DIMENSIONS
-G_SEAT_ROWS = 4
-G_SEAT_COLS = 6
+G_SEAT_ROWS = 2
+G_SEAT_COLS = 2
 
 import sys # For command line argument sys.argv
 from random import randint # For random gift seat assignment
@@ -232,26 +232,13 @@ class Kino2DSeatManager(SeatManager):
             print("│", end="")
             for col in range(self.__cols):
                 seat:Seat = self.__seat_list[row][col]
-                booked_string = ""
-                if seat.is_booked():
-                    booked_seats += 1
-                    booked_string = "booked"
-                print(f" {booked_string:^6} │", end="")
-            print()
-
-            print("│", end="")
-            for col in range(self.__cols):
-                print(f" {self.__seat_coord_to_string_id(row, col):^6} │", end="")
-            print()
-
-            print("│", end="")
-            for col in range(self.__cols):
-                seat:Seat = self.__seat_list[row][col]
-                gifted_string = ""
-                if seat.has_gift():
-                    gifted_seats += 1
-                    gifted_string = "=GIFT="
-                print(f" {gifted_string:^6} │", end="")
+                
+                prefix = "#" if seat.is_booked() else " "
+                suffix = "$" if seat.has_gift() else " "
+                id_str = self.__seat_coord_to_string_id(row, col)
+                txt = f"{prefix}{id_str}{suffix}" 
+                
+                print(f" {txt:^6} │", end="")
             print()
         print(bot)
         print(f"Booked/Total Seats    : {booked_seats}/{self.__seat_count}")
