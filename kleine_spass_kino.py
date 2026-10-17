@@ -24,10 +24,14 @@ class Customer:
 
 class Gift(ABC):
     """Interface for Gift implementations"""
-    @abstractmethod # prinft(popcorn_gift)
+    @abstractmethod # print(gift)
     def __str__(self)->str: 
-        pass  
-
+        pass
+    @abstractmethod 
+    def consume(self)->None:
+        pass
+        
+    
 
 class Seat(ABC):
     """Interface for Seat implementations"""
@@ -80,11 +84,15 @@ class SeatManager(ABC):
 class PopcornGift(Gift):
     def __str__(self):
         return "FREE POPCORN 🍿"
+    def consume(self):
+        print("Crunch " * 3)
 
 
 class BeerGift(Gift):
     def __str__(self):
         return "FREE BEER 🍺"
+    def consume(self):
+        print("Slurp " * 3)
 
 
 class KinoSeat(Seat):
@@ -291,9 +299,11 @@ class Ticket:
         seat_str     = f"Seat number   : {', '.join(str(key) for key in self.__booked_seats.keys())}"
 
         gift_str = []
+        claimed_gifts = []
         for seat_id, seat in self.__booked_seats.items():
+            if not seat.has_gift(): continue
             gift = seat.claim_gift()
-            if gift is None: continue
+            claimed_gifts.append(gift)
             gift_str.append(f"CONGRATS you got {gift} x1 from seat {seat_id} !")
 
         print("#" * 60)
@@ -302,8 +312,11 @@ class Ticket:
         print(f"## {seat_str:<54} ##")
         if gift_str:
             for s in gift_str:
-                print(f"## {s:^54} ##")
+                # emoji is displayed as 2 characters worth of space
+                print(f"## {s:^53} ##")
         print("#" * 60)
+        for gift in claimed_gifts:
+            gift.consume()
 
 
 class Kino:
