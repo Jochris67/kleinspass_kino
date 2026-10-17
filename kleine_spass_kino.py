@@ -289,13 +289,14 @@ class Kino2DSeatManager(SeatManager):
 
 
 class Ticket:
-    def __init__(self, customer:Customer, booked_seats:dict[str, Seat]) -> None:
-        self.__customer:Customer = customer
+    def __init__(self, customer_name:str, customer_id:str, booked_seats:dict[str, Seat]) -> None:
+        self.__customer_name:str = customer_name
+        self.__customer_id:str = customer_id
         self.__booked_seats:dict[str, Seat] = dict(booked_seats) # copy to get full ownership
 
     def print_ticket(self) -> None:
         title_str    = "KinoKleinSpass"
-        customer_str = f"Customer name : {self.__customer.get_name()} #{self.__customer.get_id()}"
+        customer_str = f"Customer name : {self.__customer_name} #{self.__customer_id}"
         seat_str     = f"Seat number   : {', '.join(str(key) for key in self.__booked_seats.keys())}"
 
         gift_str:list[str] = []
@@ -370,7 +371,7 @@ class Kino:
                 for seat_id in booked_seats:
                     self.__seat_manager.book_seat(seat_id, customer)
 
-                ticket = Ticket(customer, booked_seats)
+                ticket = Ticket(customer.get_name(), customer.get_id(), booked_seats)
                 ticket.print_ticket()
 
             elif choice == "2":
