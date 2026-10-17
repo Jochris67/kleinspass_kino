@@ -10,17 +10,25 @@ from abc import ABC, abstractmethod # OOP specs
 
 class Customer:
     """Simple Customer object for Seat occupant"""
-    id_counter:int = 0
+    __id_counter:int = 0
     def __init__(self, name:str):
-        self.name:str = name
-        self.id:str = str(Customer.id_counter) 
-        Customer.id_counter += 1
+        self.__name:str = name
+        self.__id:str = str(Customer.__id_counter) 
+        Customer.__id_counter += 1
+    # Read Only values
+    def get_name(self):
+        return self.__name
+    def get_id(self):
+        return self.__id
+
 
 class Gift(ABC):
     """Interface for Gift implementations"""
     @abstractmethod # prinft(popcorn_gift)
     def __str__(self)->str: 
-        pass  
+        pass
+    
+    
 
 class Seat(ABC):
     """Interface for Seat implementations"""
@@ -28,10 +36,10 @@ class Seat(ABC):
     def is_booked(self)->bool: 
         pass
     @abstractmethod # return Customer objects from seat array
-    def get_customer(self)->Customer: 
+    def get_customer(self)->Customer | None: 
         pass
     @abstractmethod # action book a seat
-    def book_seat(self)->None: 
+    def book_seat(self, customer:Customer)->None: 
         pass
     @abstractmethod # return if Seat has a Gift
     def has_gift(self)->bool: 
@@ -40,11 +48,12 @@ class Seat(ABC):
     def set_gift(self, gift:Gift)->None: 
         pass
     @abstractmethod # return the Seat's Gift
-    def claim_gift(self)->Gift: 
+    def claim_gift(self)->Gift | None: 
         pass
     @abstractmethod # reset Seat
     def clear_seat(self)->None: 
         pass
+
 
 class SeatManager(ABC):
     """Interface for SeatManagers needed by Kino clasess"""
@@ -67,20 +76,23 @@ class SeatManager(ABC):
     def set_random_gifted_seats(self, gifted_seat_count:int)->None:
         pass
 
+
 # SET WHAT THE GIFT IS
 class PopcornGift(Gift):
     def __str__(self):
         return "FREE POPCORN 🍿"
 
+
 class BeerGift(Gift):
     def __str__(self):
         return "FREE BEER 🍺"
+
 
 class KinoSeat(Seat):
     """A KinoSeat that itself stores the entirety of data relevant to a Seat""" 
     def __init__(self):
         self.__customer:Customer = None
-        self.__gift = None
+        self.__gift:Gift = None
 
     def get_customer(self): 
         return self.__customer
@@ -91,9 +103,9 @@ class KinoSeat(Seat):
     def book_seat(self, customer:Customer): 
         """Book a seat, raise an error if seat already booked"""
         if not isinstance(customer, Customer):
-            raise Exception(f"!!! Only a Customer object can book a seat.")
+            raise TypeError(f"!!! Customer must be a Customer instance.")
         if self.is_booked(): 
-            raise Exception(f"!!! Seat already booked by {self.__customer.name}.")
+            raise ValueError(f"!!! Seat is already booked by {self.__customer.get_name()} #{self.__customer.get_id()}.")
         self.__customer = customer
 
     def has_gift(self): 
@@ -102,7 +114,7 @@ class KinoSeat(Seat):
     def set_gift(self, gift:Gift):
         """Set the Gift, raise an error if not a Gift instance"""
         if not isinstance(gift, Gift): 
-            raise Exception("!!! Not a Gift object.")
+            raise TypeError(f"!!! gift must be a Gift instance.")
         self.__gift = gift
         
     def claim_gift(self):
@@ -118,30 +130,44 @@ class KinoSeat(Seat):
         self.__customer = None
         self.__gift = None
 
+
 class Kino2DSeatManager(SeatManager):
     """Manage Seats for Kino classes with 2D lists for storage"""
     def __init__(self, rows_:int, cols_:int):
         self.__rows:int = rows_
         self.__cols:int = cols_ 
         self.__seat_count:int = self.__rows * self.__cols
-        self.__seat_list:list = [[KinoSeat() for _ in range(self.__cols)] for _ in range(self.__rows)]
+        self.__seat_list: list[list[Seat]] = [[KinoSeat() for _ in range(self.__cols)] for _ in range(self.__rows)]
         self.__gift_count:int = 0
     
-    def __map_seat(self, key:str):
-        alphabet = ""
-        numeric = "0"
-        for k in key:
-            if k.isalpha(): alphabet += k.upper()
-            elif k.isdigit(): numeric += k
+    def __map_seat(self, key: str) -> tuple[int, int]:
+        if not isinstance(key, str):
+            raise TypeError("!!! Seat ID must be a string.")
+        
+        key = key.strip().upper()
+        
+        split_at = 0
+        for char in key:
+            if char.isdigit(): 
+                break
+            split_at += 1
+        else:
+            # 'else' triggers if loop finishes without hitting 'break' (case: no digits found)
+            raise ValueError(f"!!! Invalid seat ID '{key}'; expected letters followed by a number, e.g. 'A1'.")
+        
+        alphabet = key[:split_at]
+        numeric = key[split_at:]
+        
+        if not alphabet.isalpha() or not numeric.isdigit():
+            raise ValueError(f"!!! Invalid seat ID '{key}'; expected letters followed by a number, e.g. 'A1'.")
         
         row = 0
         # A is 0, Z is 25, AA is 26 ...
         # A < Z < AA < AZ < BA < BZ ...
         for a in alphabet:
             row = (row*26) + (ord(a) - ord("A") + 1)
-        row -= 1 # make it 0 indexed
-        col = int(numeric) - 1
-        return row, col
+        # - 1 to make row, col 0 indexed
+        return row - 1, int(numeric) - 1
 
     def __seat_coord_to_string_id(self, row:int, col:int):
         num = row + 1 # temporary offset to prevent num -= 1 going out of idx
@@ -158,19 +184,14 @@ class Kino2DSeatManager(SeatManager):
         """Return the reference to a Seat object, what is returned is mutable so be careful"""
         row, col = self.__map_seat(id)
         if not (0 <= row < self.__rows and 0 <= col < self.__cols):
-            raise Exception(f"!!! Seat {id} doesn't exist.")
+            raise ValueError(f"!!! Seat ID {id} is outside the seating area ({self.__rows} rows x {self.__cols} columns).")
         return self.__seat_list[row][col]
 
     def book_seat(self, id:str, customer:Customer):
-        """Handle booking a seat and exception handling as well"""
-        seat = None
-        try: 
-            seat:KinoSeat = self.get_seat(id)
-            seat.book_seat(customer)
-            print(f"Successfully booked seat {id} for {customer.name}.")
-        except Exception as err: 
-            print(err)
-            return
+        """Book a seat; booking errors are handled by the caller."""
+        seat:KinoSeat = self.get_seat(id)
+        seat.book_seat(customer)
+        print(f"Successfully booked seat {id} for {customer.get_name()} #{customer.get_id()}.")
 
     def clear_seats(self):
         for row in self.__seat_list:
@@ -180,6 +201,8 @@ class Kino2DSeatManager(SeatManager):
         
     def set_random_gifted_seats(self, gifted_seat_count:int):
         """Set the randomized gifted seats"""
+        if not isinstance(gifted_seat_count, int):
+            raise TypeError(f"!!! gifted_seat_count must be an integer.")
         gifted_seat_count = min(gifted_seat_count, self.__seat_count)
         self.__gift_count = gifted_seat_count
         while gifted_seat_count > 0:
@@ -257,86 +280,102 @@ class Kino2DSeatManager(SeatManager):
         print(f"Booked/Total Seats    : {booked_seats}/{self.__seat_count}")
         print(f"Unclaimed/Total Gifts : {gifted_seats}/{self.__gift_count}")
 
-class Ticket():
+
+class Ticket:
     def __init__(self, customer:Customer, booked_seats:dict):
         self.__customer = customer
-        self.__booked_seats = booked_seats
-        
-    def get_customer(self):
-        return self.__customer
-
-    def get_booked_seats(self):
-        return self.__booked_seats
+        self.__booked_seats = dict(booked_seats) # copy to get full ownership
 
     def print_ticket(self):
         title_str    = "KinoKleinSpass"
-        customer_str = f"Customer name : {self.__customer.name} #{self.__customer.id}"
-        seat_str     = f"Seat number   : {list*(self.__booked_seats.keys())}"
+        customer_str = f"Customer name : {self.__customer.get_name()} #{self.__customer.get_id()}"
+        seat_str     = f"Seat number   : {', '.join(str(key) for key in self.__booked_seats.keys())}"
+
         gift_str = []
         for seat_id, seat in self.__booked_seats.items():
             gift = seat.claim_gift()
             if gift is None: continue
-            gift_str.append(f"CONGRATS you got {gift} x1!")
+            gift_str.append(f"CONGRATS you got {gift} x1 from seat {seat_id} !")
 
-        print("#" * 56)
-        print(f"## {title_str:^50} ##")
-        print(f"## {customer_str:^50} ##")
-        print(f"## {seat_str:^50} ##")
+        print("#" * 60)
+        print(f"## {title_str:<54} ##")
+        print(f"## {customer_str:<54} ##")
+        print(f"## {seat_str:<54} ##")
         if gift_str:
             for s in gift_str:
-                print(f"## {s:^50} ##")
-        print("#" * 56)
+                print(f"## {s:^54} ##")
+        print("#" * 60)
+
 
 class Kino:
     def __init__(self, seat_rows:int, seat_cols:int):
-        self.seat_manager = Kino2DSeatManager(seat_rows, seat_cols)
+        self.__seat_manager = Kino2DSeatManager(seat_rows, seat_cols)
 
     def start(self, gifted_seat_count: int):
-        self.seat_manager.set_random_gifted_seats(gifted_seat_count)
-        self.seat_manager.customer_show_seats()
+        self.__seat_manager.set_random_gifted_seats(gifted_seat_count)
+        self.__seat_manager.customer_show_seats()
 
         while True:
             print("\nMain Menu:")
             print("1. Buy Ticket")
             print("2. Admin View")
-            print("3. Exit")
+            print("3. Start Film")
+            print("4. Exit")
 
             choice = input("Choose menu: ").strip()
 
             if choice == "1":
                 customer = Customer(input("Customer name: ").strip())
-                self.seat_manager.customer_show_seats()
+                self.__seat_manager.customer_show_seats()
                 seats_to_book = input("Choose your seats (example A1): ").strip().upper().split(",")
 
-                # collect the seats to book to make a ticket
                 booked_seats = {}
-
+                cancel_booking = False
                 for seat_str in seats_to_book:
                     seat_id = seat_str.strip()
                     try:
-                        if seat_id in booked_seats:
-                            raise Exception(f"Cannot book the same seats {seat_id} repeatedly.")
-                        
-                        self.seat_manager.book_seat(seat_id, customer)
-                        # if successfully booked a seat
-                        booked_seats[seat_id] = self.seat_manager.get_seat(seat_id)
-                    except Exception as err:
+                        seat = self.__seat_manager.get_seat(seat_id)
+                        if seat in booked_seats.values():
+                            raise ValueError(f"!!! Seat {seat_id} was selected repeatedly.")
+                        if seat.is_booked():
+                            booked_by = seat.get_customer()
+                            raise ValueError(f"!!! Seat {seat_id} is already booked by {booked_by.get_name()} #{booked_by.get_id()}.")
+                        booked_seats[seat_id] = seat  # Validate only; do not booked yet
+                    except (TypeError, ValueError) as err:
                         print(err)
-                        continue
+                        if input("Cancel entire booking? (y/n): ").strip().lower() == "y":
+                            cancel_booking = True
+                            break # break from for loop
 
-                # Create a ticket
+                if cancel_booking:
+                    print("Booking cancelled; no seats were reserved.")
+                    continue # continue while loop
+                if not booked_seats:
+                    print("No valid seats selected; ticket not issued.")
+                    continue # continue while loop
+
+                for seat_id in booked_seats:
+                    self.__seat_manager.book_seat(seat_id, customer)
+
                 ticket = Ticket(customer, booked_seats)
                 ticket.print_ticket()
 
             elif choice == "2":
-                self.seat_manager.admin_show_seats()
+                self.__seat_manager.admin_show_seats()
 
             elif choice == "3":
-                print("Thank you.")
-                break
+                print(f"\n!!! FILM STARTS !!! *ceritanya filmnya mulai ...*")
+                print(f"\n!!! FILM ENDS !!! *kemudian ceritanya filmnya beres ...*")
+                self.__seat_manager.clear_seats()
+                print(f"\n!!! CINEMA OPENS !!! *cinema berulang ...*")
+                self.__seat_manager.set_random_gifted_seats(gifted_seat_count)
+
+            elif choice == "4":
+                print("End of session.")
+                break # break while loop
 
             else:
-                print("Choose from 1 to 3.") 
+                print("Choose from 1 to 4.")
 
 if __name__ == "__main__":
     kino = Kino(G_SEAT_ROWS, G_SEAT_COLS)
@@ -348,7 +387,7 @@ if __name__ == "__main__":
     try: G_GIFTED_SEAT_COUNT = int(sys.argv[1])
     # ignore IndexError when sys.argv[1] doesn't exist ex: "... kleinspass_kino.py"
     # ignore ValueError when sys.argv[1] is not convertible to int
-    except Exception: pass
+    except Exception: print(f"!!! Default gift count to {G_GIFTED_SEAT_COUNT} gifts.")
 
     # majority of program runtime is in the start method ... 
     kino.start(G_GIFTED_SEAT_COUNT)
