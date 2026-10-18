@@ -101,12 +101,6 @@ class KinoSeat(Seat):
         self.__customer:Customer = None
         self.__gift:Gift = None
 
-    def get_customer(self): 
-        return self.__customer
-
-    def is_booked(self): 
-        return self.__customer is not None
-
     def book_seat(self, customer:Customer): 
         """Book a seat, raise an error if seat already booked"""
         if not isinstance(customer, Customer):
@@ -144,7 +138,7 @@ class Kino2DSeatManager(SeatManager):
         self.__rows:int = rows_
         self.__cols:int = cols_ 
         self.__seat_count:int = self.__rows * self.__cols
-        self.__seat_list: list[list[Seat]] = [[KinoSeat() for _ in range(self.__cols)] for _ in range(self.__rows)]
+        self.__seat_list: list[list[KinoSeat]] = [[KinoSeat() for _ in range(self.__cols)] for _ in range(self.__rows)]
         self.__gift_count:int = 0
     
     def __map_seat(self, key: str) -> tuple[int, int]:
