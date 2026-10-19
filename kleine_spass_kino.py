@@ -150,7 +150,6 @@ class Kino2DSeatManager(SeatManager):
     def __map_seat(self, key: str) -> tuple[int, int]:
         if not isinstance(key, str):
             raise TypeError("!!! Seat ID must be a string.")
-        
         key = key.strip().upper()
         
         split_at = 0
@@ -208,8 +207,6 @@ class Kino2DSeatManager(SeatManager):
         
     def set_random_gifted_seats(self, gifted_seat_count:int) -> None:
         """Set the randomized gifted seats"""
-        if not isinstance(gifted_seat_count, int):
-            raise TypeError(f"!!! gifted_seat_count must be an integer.")
         gifted_seat_count = min(gifted_seat_count, self.__seat_count)
         self.__gift_count = gifted_seat_count
         while gifted_seat_count > 0:
@@ -224,11 +221,9 @@ class Kino2DSeatManager(SeatManager):
     def __print_kinoleinwand(self) -> None:
         total_grid_width = 1 + (9 * self.__cols)
         inner_width = total_grid_width - 2
-        
         top = "┌" + "─" * inner_width + "┐"
         mid = "│" + "KINOLEINWAND".center(inner_width) + "│"
         bot = "└" + "─" * inner_width + "┘"
-        
         print(f"{top}\n{mid}\n{bot}")
         
     def customer_show_seats(self) -> None:
@@ -370,7 +365,6 @@ class Kino:
 
                 for seat_id in booked_seats:
                     self.__seat_manager.book_seat(seat_id, customer)
-
                 ticket = Ticket(customer.get_name(), customer.get_id(), booked_seats)
                 ticket.print_ticket()
 
@@ -395,13 +389,12 @@ if __name__ == "__main__":
     kino = Kino(G_SEAT_ROWS, G_SEAT_COLS)
     # COMMAND LINE ARGUMENTS ex: "... kleinspass_kino.py <int>"
     # whatever is in ... this program only gets the arguments :
-    # "kleinspass_kino.py" at idx 0 of sys.argv list
-    # <int> at idx 1 of sys.argv list
+    # "" at idx 0 of sys.argv list
+    # <int> at idx 1 okleinspass_kino.pyf sys.argv list
     # try get and convert argument string at sys.argv[1] to integer
     try: G_GIFTED_SEAT_COUNT = int(sys.argv[1])
     # ignore IndexError when sys.argv[1] doesn't exist ex: "... kleinspass_kino.py"
     # ignore ValueError when sys.argv[1] is not convertible to int
     except Exception: print(f"!!! Default gift count to {G_GIFTED_SEAT_COUNT} gifts.")
-
     # majority of program runtime is in the start method ... 
     kino.start(G_GIFTED_SEAT_COUNT)
